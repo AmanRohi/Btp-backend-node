@@ -28,7 +28,10 @@ const Business=require("./modal/Business");
 const Transaction=require("./modal/Transaction");
 const Application = require('./modal/Applications');
 
-const customerAuth=(req,res,next)=>{
+const Patient = require('./modal/Patient'); // Adjust the path as necessary
+const IoTDevice = require('./modal/IoTDevice'); // Ensure to import IoTDevice model
+
+const doctorAuth=(req,res,next)=>{
   try{
     const accessToken=req.headers["authorization"];
     const valToBeVerified=accessToken.split(" ")[1];
@@ -37,7 +40,7 @@ const customerAuth=(req,res,next)=>{
         if(err){
             res.status(500).json({message:err.message});
         }else{
-            if(user.role=="Customer"){
+            if(user.role=="Doctor"){
                 req.user=user;
                 next();
             }
@@ -51,7 +54,29 @@ catch(err){
     res.status(500).json({message:err.message});
 }
 }
+const customerAuth=(req,res,next)=>{
+  try{
+    const accessToken=req.headers["authorization"];
+    const valToBeVerified=accessToken.split(" ")[1];
 
+    jwt.verify(valToBeVerified,process.env.SECRET_KEY,(err,user)=>{
+        if(err){
+            res.status(500).json({message:err.message});
+        }else{
+            if(user.role=="Doctor"){
+                req.user=user;
+                next();
+            }
+            else{
+                res.status(500).json({message:"UnAuthorized Access !!"});
+            }
+        }
+    });
+}
+catch(err){
+    res.status(500).json({message:err.message});
+}
+}
 const businessAuth=(req,res,next)=>{
   try{
     const accessToken=req.headers["authorization"];
@@ -236,26 +261,22 @@ app.post("/loginAdmin",async (req,res)=>{
   }
 });
 
-
-app.post("/getUserDetails",customerAuth,async(req,res)=>{
-
-  try{
-    const userId=req.user._id;
-    const user = await User.findById(userId);
+app.post("/getPatientDetails", doctorAuth, async (req, res) => {
+  try {
+    const pId = req.body.pId;
+    const user = await Patient.find({id:pId}).populate("readings"); // Populate readings
     if (!user) {
-      res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'Patient not found' });
     }   
+
     console.log(user);
     res.status(200).json(user);
-  }
-  catch(error){
+  } catch (error) {
     console.log(error);
-    res.status(400).json({error:"In Catch error"});
+    res.status(400).json({ error: "In Catch error" });
   }
-
-
-
 });
+
 
 
 // Rectify them !!
